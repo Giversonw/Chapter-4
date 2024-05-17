@@ -4,12 +4,21 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.View;
 
+import java.lang.ref.WeakReference;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
+import android.os.Handler;
+//import java.util.logging.Handler;
+import com.bytedance.clockapplication.MainActivity;
+
+import java.util.logging.LogRecord;
 
 public class Clock extends View {
 
@@ -56,6 +65,24 @@ public class Clock extends View {
         super(context, attrs, defStyleAttr);
         init(context, attrs);
     }
+//    class MyHandler extends Handler
+//    {
+//        private WeakReference<View> view;
+//        public MyHandler(WeakReference<View> view)
+//        {
+//            this.view=view;
+//        }
+//        @Override public void handleMessage(Message msg)
+//        {
+//            if (msg.what==0x123){
+////                view.get().draw(canvas);
+////                drawNeedles(canvas);
+//                postInvalidate();
+//            }
+//            super.handleMessage(msg);
+//        }
+//    }
+//    private Handler handler=new MyHandler(new WeakReference(this));
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -106,7 +133,22 @@ public class Clock extends View {
         drawNeedles(canvas);
 
         // todo 每一秒刷新一次，让指针动起来
+        //也就是每秒运行一下 drawNeedles
+//        new Timer().schedule(new TimerTask() {
+//            @Override
+//            public void run() {
+////                postInvalidate();
+//                handler.sendEmptyMessage(0x123);
+//            }
+//        },0,1000);
 
+        Handler handler=new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                postInvalidate();
+            }
+        }, 1000);
     }
 
     private void drawDegrees(Canvas canvas) {
@@ -147,7 +189,44 @@ public class Clock extends View {
     private void drawHoursValues(Canvas canvas) {
         // Default Color:
         // - hoursValuesColor
+//        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+//        paint.setColor(degreesColor); // 使用在类中定义的度数颜色变量
+//        paint.setTextSize(PANEL_RADIUS / 7.5f); // 使用PANEL_RADIUS来计算字体大小，可以根据需要调整比例
+//        paint.setTextAlign(Paint.Align.CENTER);
+//
+//        for (int i = 1; i <= 12; i++) {
+//            // 根据钟表的比例调整文字的半径位置
+//            float distance = mRadius - (mRadius / 6);
+//            // 计算时针数字的位置
+//            double angle = Math.PI / 6 * (i - 3);
+//            int x = (int) (mCenterX + distance * Math.cos(angle));
+//            int y = (int) (mCenterY + distance * Math.sin(angle));
+//
+//            // 对于一些数字不处于中线上，需要微调确保它们在视觉上更加居中
+//            if (i == 6 || i == 12) {
+//                y += paint.getTextSize() / 3;
+//            }
+//
+//            canvas.drawText(String.valueOf(i), x, y, paint);
+//        }
 
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(degreesColor);
+        paint.setTextSize(mRadius / 7.5f);
+        paint.setTextAlign(Paint.Align.CENTER);
+
+        Paint.FontMetrics fontMetrics = paint.getFontMetrics();
+        float textHeight = fontMetrics.descent - fontMetrics.ascent; // 计算文字的真实高度
+        float textOffset = textHeight / 2 - fontMetrics.descent; // 计算文本相对于基线的偏移量
+
+        for(int i = 1; i <= 12; i++) {
+            double angle = Math.PI / 6 * (i - 3);
+            float x = (float) (mCenterX + (mRadius - 80) * Math.cos(angle));
+            float y = (float) (mCenterY + (mRadius - 80) * Math.sin(angle));
+
+            y += textOffset; // 使用字体度量调整y坐标的位置
+            canvas.drawText(String.valueOf(i), x, y, paint);
+        }
 
     }
 
@@ -167,6 +246,7 @@ public class Clock extends View {
         drawPointer(canvas, 2, nowSeconds);
         // 画分针
         // todo 画分针
+        drawPointer(canvas, 1, 5*nowMinutes+nowSeconds/12);
         // 画时针
         int part = nowMinutes / 12;
         drawPointer(canvas, 0, 5 * nowHours + part);
@@ -189,7 +269,9 @@ public class Clock extends View {
                 break;
             case 1:
                 // todo 画分针，设置分针的颜色
-
+                degree = value * UNIT_DEGREE;
+                mNeedlePaint.setColor(Color.BLUE);
+                pointerHeadXY = getPointerHeadXY(MINUTE_POINTER_LENGTH, degree);
                 break;
             case 2:
                 degree = value * UNIT_DEGREE;
